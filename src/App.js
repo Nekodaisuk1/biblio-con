@@ -13,7 +13,7 @@ function App() {
     dislikedGenre: '',
     introducingWorkGenre: ''
   });
-  const [username, setUsername] = useState(''); // ユーザーネームのstateを追加
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -22,7 +22,7 @@ function App() {
         const userId = user.uid + "-" + Date.now();
         setMyId(userId);
         getUsername(userId).then(name => {
-          setUsername(name || ''); // ユーザーネームを取得
+          setUsername(name || '');
         });
       } else {
         setIsLoggedIn(false);
@@ -49,12 +49,19 @@ function App() {
   const handleSaveSettings = () => {
     if (myId) {
       saveMatchingSettings(myId, matchingSettings);
-      saveUserProfile(myId, { username }); // ユーザーネームを保存
+      saveUserProfile(myId, { username });
     }
   };
 
-  const startMatching = () => {
+  const startMatching = async () => {
     setIsMatchingWaiting(true);
+    const matchedUsers = await findMatchingUsers(myId, matchingSettings);
+    if (matchedUsers.length > 0) {
+      const matchedUserId = matchedUsers[0].userId;
+      setRemoteId(matchedUserId);
+      setIsMatchingWaiting(false);
+      setIsMatchingStarted(true);
+    }
   };
 
   const cancelMatching = () => {
@@ -63,6 +70,14 @@ function App() {
 
   return (
     <div className="App">
+      <div>
+        <strong>デバッグ情報:</strong>
+        <ul>
+          <li>ログイン状態: {isLoggedIn ? "ログイン済み" : "未ログイン"}</li>
+          <li>マッチング状態: {remoteId ? "マッチング済み" : "未マッチング"}</li>
+          <li>ビデオ通話状態: {myId && remoteId ? "ビデオ通話可能" : "ビデオ通話不可"}</li>
+        </ul>
+      </div>
       {isMatchingStarted ? (
         <VideoChat myId={myId} remoteId={remoteId} />
       ) : isMatchingWaiting ? (
@@ -72,14 +87,6 @@ function App() {
         </div>
       ) : (
         <>
-          <div>
-            <strong>デバッグ情報:</strong>
-            <ul>
-              <li>ログイン状態: {isLoggedIn ? "ログイン済み" : "未ログイン"}</li>
-              <li>マッチング状態: {remoteId ? "マッチング済み" : "未マッチング"}</li>
-              <li>ビデオ通話状態: {myId && remoteId ? "ビデオ通話可能" : "ビデオ通話不可"}</li>
-            </ul>
-          </div>
           {isLoggedIn ? (
             <>
               <button onClick={logout}>ログアウト</button>
