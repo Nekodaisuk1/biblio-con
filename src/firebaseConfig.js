@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-
 const firebaseConfig = {
   apiKey: "AIzaSyAARrut72o5oitHskavSe4MwNaL5CJlGUw",
   authDomain: "biblio-connect.firebaseapp.com",
@@ -14,6 +13,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+export const generateUniqueRoomId = () => {
+  const S = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const N = 8;
+  return Array.from(Array(N)).map(() => S[Math.floor(Math.random() * S.length)]).join('') + Date.now();
+};
+
+export const startVideoCall = async (users) => {
+  const roomId = generateUniqueRoomId();
+  try {
+    console.log("Users in startVideoCall:", users); // この行を追加
+    users.forEach(async user => {
+      console.log("Setting room ID for user:", user); // この行を追加
+      await setDoc(doc(db, 'users', user.userId), { roomId });
+    });
+  } catch (error) {
+    console.error("Error setting room ID: ", error);
+  }
+};
+
 
 export const findMatchingUsers = async (userId, userSettings) => {
   let matchedUsers = [];
@@ -85,6 +104,44 @@ export const getUsername = async (userId) => {
 export const getCurrentUserId = () => {
   const user = auth.currentUser;
   return user ? user.uid : null;
+};
+
+export const addWaitingUser = async (userId, settings) => {
+  try {
+    await addDoc(collection(db, 'waitingUsers'), { userId, ...settings });
+  } catch (error) {
+    console.error("待機ユーザー追加エラー:", error);
+  }
+};
+
+export const removeWaitingUser = async (userId) => {
+  try {
+    if (userId) { // userIdがundefinedでないことを確認
+      const q = query(collection(db, 'waitingUsers'), where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        deleteDoc(doc.ref);
+      });
+    } else {
+      console.error("UserId is undefined in removeWaitingUser");
+    }
+  } catch (error) {
+    console.error("待機ユーザー削除エラー:", error);
+  }
+};
+
+export const getWaitingUsers = async () => {
+  try {
+    const users = [];
+    const querySnapshot = await getDocs(collection(db, 'waitingUsers'));
+    querySnapshot.forEach((doc) => {
+      users.push(doc.data());
+    });
+    return users;
+  } catch (error) {
+    console.error("待機ユーザー取得エラー:", error);
+    return [];
+  }
 };
 
 export { auth };

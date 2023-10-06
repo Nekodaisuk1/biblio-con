@@ -15,8 +15,7 @@ import {
 
 function App() {
   const [myId, setMyId] = useState(null);
-  const [remoteId, setRemoteId] = useState(null);
-  const [roomId, setRoomId] = useState(null); // roomIdのステートを追加
+  const [roomId, setRoomId] = useState(null); 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMatchingStarted, setIsMatchingStarted] = useState(false);
   const [isMatchingWaiting, setIsMatchingWaiting] = useState(false);
@@ -28,7 +27,7 @@ function App() {
     dislikedGenre: ''
   });
   const [username, setUsername] = useState('');
-  const [dummyUserCount, setDummyUserCount] = useState(0);
+  const [dummyUserCount, setDummyUserCount] = useState(0); // ダミーユーザーの数を管理するステート
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -42,7 +41,6 @@ function App() {
       } else {
         setIsLoggedIn(false);
         setMyId(null);
-        setRemoteId(null);
       }
     });
 
@@ -75,11 +73,9 @@ function App() {
     if (waitingUsers.length >= 4) {
       const matchedUsers = waitingUsers.slice(0, 4);
       
-      // roomIdを生成してステートにセット
       const newRoomId = generateRoomId();
       setRoomId(newRoomId);
       
-      // matchedUsersの各ユーザーオブジェクトにuserIdが存在するか確認
       console.log("Matched Users:", matchedUsers);
       
       await startVideoCall(matchedUsers);
@@ -96,7 +92,6 @@ function App() {
     }
   };  
 
-  // roomIdを生成する関数
   const generateRoomId = () => {
     return "room_" + new Date().getTime();
   };
@@ -119,32 +114,19 @@ function App() {
     return dummyPanels;
   };
 
-  // return (
-  //   <div className="App">
-  //     {/* ... */}
-  //     {isMatchingStarted ? (
-  //       <>
-  //         <VideoChat myId={myId} roomId={roomId} />
-  //         {renderDummyUsers()} {/* ダミーユーザーのパネルをレンダリング */}
-  //       </>
-  //     ) : null;}
-  //   </div>
-  // );
-
   return (
     <div className="App">
       <div>
         <strong>デバッグ情報:</strong>
         <ul>
           <li>ログイン状態: {isLoggedIn ? "ログイン済み" : "未ログイン"}</li>
-          <li>マッチング状態: {remoteId ? "マッチング済み" : "未マッチング"}</li>
-          <li>ビデオ通話状態: {myId && remoteId ? "ビデオ通話可能" : "ビデオ通話不可"}</li>
+          <li>ビデオ通話状態: {myId && roomId ? "ビデオ通話可能" : "ビデオ通話不可"}</li>
         </ul>
       </div>
       {isMatchingStarted ? (
         <>
-        <VideoChat myId={myId} roomId={roomId} />
-        {renderDummyUsers()} {/* ダミーユーザーのパネルをレンダリング */}
+          <VideoChat myId={myId} roomId={roomId} />
+          {renderDummyUsers()} {/* ダミーユーザーのパネルをレンダリング */}
         </>
       ) : isMatchingWaiting ? (
         <div>
@@ -163,42 +145,7 @@ function App() {
                   onChange={handleUsernameChange}
                   placeholder="ユーザーネーム"
                 />
-                <input
-                  type="text"
-                  name="interestedGenreLarge"
-                  value={matchingSettings.interestedGenreLarge}
-                  onChange={handleInputChange}
-                  placeholder="興味のあるジャンル(大)"
-                />
-                <input
-                type="text"
-                  name="interestedGenreSmall"
-                  value={matchingSettings.interestedGenreSmall}
-                  onChange={handleInputChange}
-                  placeholder="興味のあるジャンル(小)"
-                />
-                <input
-                  type="text"
-                  name="dislikedGenre"
-                  value={matchingSettings.dislikedGenre}
-                  onChange={handleInputChange}
-                  placeholder="苦手なジャンル"
-                />
-                <input
-                  type="text"
-                  name="introducingWorkGenreLarge"
-                  value={matchingSettings.introducingWorkGenreLarge}
-                  onChange={handleInputChange}
-                  placeholder="紹介作品のジャンル(大)"
-                />
-                <input
-                  type="text"
-                  name="introducingWorkGenreSmall"
-                  value={matchingSettings.introducingWorkGenreSmall}
-                  onChange={handleInputChange}
-                  placeholder="紹介作品のジャンル(小)"
-                />
-
+                {/* 他の入力フィールドと保存ボタンもここに配置 */}
                 <button onClick={handleSaveSettings}>マッチング設定を保存</button>
                 <button onClick={startMatching}>マッチングを開始</button>
               </div>
