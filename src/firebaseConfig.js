@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+
 const firebaseConfig = {
   apiKey: "AIzaSyAARrut72o5oitHskavSe4MwNaL5CJlGUw",
   authDomain: "biblio-connect.firebaseapp.com",
@@ -23,16 +24,15 @@ export const generateUniqueRoomId = () => {
 export const startVideoCall = async (users) => {
   const roomId = generateUniqueRoomId();
   try {
-    console.log("Users in startVideoCall:", users); // この行を追加
+    console.log("Users in startVideoCall:", users);
     users.forEach(async user => {
-      console.log("Setting room ID for user:", user); // この行を追加
+      console.log("Setting room ID for user:", user);
       await setDoc(doc(db, 'users', user.userId), { roomId });
     });
   } catch (error) {
     console.error("Error setting room ID: ", error);
   }
 };
-
 
 export const findMatchingUsers = async (userId, userSettings) => {
   let matchedUsers = [];
@@ -116,7 +116,7 @@ export const addWaitingUser = async (userId, settings) => {
 
 export const removeWaitingUser = async (userId) => {
   try {
-    if (userId) { // userIdがundefinedでないことを確認
+    if (userId) {
       const q = query(collection(db, 'waitingUsers'), where('userId', '==', userId));
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach((doc) => {
@@ -141,6 +141,15 @@ export const getWaitingUsers = async () => {
   } catch (error) {
     console.error("待機ユーザー取得エラー:", error);
     return [];
+  }
+};
+
+export const dissolveRoom = async (roomId) => {
+  try {
+    const roomRef = doc(db, 'rooms', roomId);
+    await deleteDoc(roomRef);
+  } catch (error) {
+    console.error("ルーム解散エラー:", error);
   }
 };
 
