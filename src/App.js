@@ -4,6 +4,11 @@ import Sigin from './Sigin';
 import styled from 'styled-components';
 import Home from './Home';
 import Save from "./components/Save";
+import { db } from './firebaseConfig';
+import { doc, onSnapshot } from 'firebase/firestore'; 
+import { getDocs, collection } from 'firebase/firestore';
+import { getDummyUsers } from './firebaseConfig';
+import Untitled2 from './Untitled2';
 
 import {
   googleLogin,
@@ -22,14 +27,15 @@ import {
 const SessionButton = styled.button`
   font-family: Roboto;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 300;
   color: rgba(255,255,255,1);
-  font-size: 82px;
-  width: 350px;
-  height: 350px;
+  font-size: 70px;
+  width: 300px;
+  height: 300px;
   position: absolute;
-  top: 173px;
-  left: 800px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-55%, -55%);
   background-color: green;
   border-radius: 50%;
   border: none;
@@ -37,6 +43,7 @@ const SessionButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index 5;
 `;
 
 const TimerDisplay = styled.div`
@@ -44,14 +51,17 @@ const TimerDisplay = styled.div`
   font-style: normal;
   font-weight: 400;
   color: rgba(255,255,255,1);
-  font-size: 82px;
-  width: 350px;
-  height: 350px;
+  font-size: 70px;
+  width: 300px;
+  height: 300px;
   position: absolute;
-  top: 173px;
-  left: 800px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-55%, -35%);
   background-color: green;
   border-radius: 50%;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,24 +87,74 @@ function App() {
   const [isSessionStarted, setIsSessionStarted] = useState(false);
   const sessionTimerRef = useRef(null);
   const [timer, setTimer] = useState(180); // 3 minutes in seconds
+  const [dummyUsers, setDummyUsers] = useState([]);
 
   useEffect(() => {
+    const fetchDummyUsers = async () => {
+      const users = await getDummyUsers();
+      console.log("Fetched dummy users:", dummyUsers);
+      setDummyUsers(users);
+    };
+
+    fetchDummyUsers();
+  }, []);
+
+  useEffect(() => {
+    if (myId) {
+      const settingsRef = doc(db, 'matchingSettings', myId);
+  
+      const unsubscribe = onSnapshot(settingsRef, (doc) => {
+        if (doc.exists()) {
+          console.log("Matching settings updated:", doc.data());
+        } else {
+          console.log("No settings found!");
+        }
+      });
+  
+      return () => unsubscribe();
+    }
+  }, [myId]);
+
+  useEffect(() => {
+    // ユーザーIDがセットされている場合にリスナーを設定
+    if (myId) {
+      // matchingSettingsコレクションの中の特定のユーザーIDのドキュメントを参照
+      const settingsRef = doc(db, 'matchingSettings', myId);
+
+      // ドキュメントの変更を監視するリスナーを設定
+      const unsubscribe = onSnapshot(settingsRef, (doc) => {
+        if (doc.exists()) {
+          console.log("Matching settings updated:", doc.data());
+        } else {
+          console.log("No settings found!");
+        }
+      });
+
+      // コンポーネントがアンマウントされるか、myIdが変更された場合にリスナーを解除
+      return () => unsubscribe();
+    }
+  }, [myId]);
+
+  useEffect(() => {
+    
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
         setIsLoggedIn(true);
-        const userId = user.uid + "-" + Date.now();
-        setMyId(userId);
-        getUsername(userId).then(name => {
+        setMyId(user.uid); // ユーザーIDを設定
+        // ユーザー名を取得
+        getUsername(user.uid).then(name => {
           setUsername(name || '');
         });
+        // 他のユーザー情報もここで取得できます
       } else {
         setIsLoggedIn(false);
         setMyId(null);
-        setRemoteId(null);
+        setUsername('');
       }
     });
-
+  
     return () => unsubscribe();
+
   }, []);
 
   const handleLogout = () => {
@@ -123,20 +183,76 @@ function App() {
     setUsername(e.target.value);
   };
 
+  const calculateMatchingPoints = (profileA, profileB) => {
+    let points = 0;
+    // ここでprofileAとprofileBを比較し、ポイントを計算します。
+    // 例:
+    if(profileA.interestedGenreLarge === profileB.interestedGenreLarge) {
+      points += 10; // 任意のポイント値
+    }
+    // 他の属性も同様に比較し、ポイントを加算します。
+    return points;
+  };
+
+  const findBestMatches = (userId, allUsersProfiles) => {
+    const userProfile = allUsersProfiles[userId];
+    const pointsMap = {};
+  
+    // 他の全てのユーザーとのポイントを計算
+    for (const otherUserId in allUsersProfiles) {
+      if (userId !== otherUserId) {
+        pointsMap[otherUserId] = calculateMatchingPoints(userProfile, allUsersProfiles[otherUserId]);
+      }
+    }
+  
+    // ポイントが最も高い3人のユーザーを見つける
+    const bestMatches = Object.keys(pointsMap).sort((a, b) => pointsMap[b] - pointsMap[a]).slice(0, 3);
+    
+    return bestMatches;
+  };
+
+  const getAllUsersProfiles = async () => {
+    const usersProfiles = {};
+    // Firestoreからすべてのユーザープロファイルを取得
+    const querySnapshot = await getDocs(collection(db, "userProfiles"));
+    querySnapshot.forEach((doc) => {
+      usersProfiles[doc.id] = doc.data();
+    });
+    return usersProfiles;
+  };
+
   const startMatching = async () => {
     setIsMatchingWaiting(true);
     await addWaitingUser(myId, matchingSettings);
     const waitingUsers = await getWaitingUsers();
+
+    const allUsersProfiles = await getAllUsersProfiles();
+  
+    // ここで全ての待機中のユーザーのプロファイルを取得します。
+    // 例: const allUsersProfiles = await getAllUsersProfiles();
+  
     if (waitingUsers.length >= 4) {
-      const matchedUsers = waitingUsers.slice(0, 4);
+      // ポイントが最も高い3人のユーザーを見つける
+      const bestMatches = findBestMatches(myId, allUsersProfiles);
+  
+      // マッチングしたユーザーのIDを取得
+      const matchedUsers = bestMatches.map(userId => {
+        return { userId, ...allUsersProfiles[userId] };
+      });
+  
       const newRoomId = generateRoomId();
       setRoomId(newRoomId);
       console.log("Matched Users:", matchedUsers);
+  
+      // ビデオ通話を開始
       await startVideoCall(matchedUsers);
+  
+      // マッチングしたユーザーを待機リストから削除
       matchedUsers.forEach(user => {
         console.log("Removing waiting user:", user);
         removeWaitingUser(user.userId);
       });
+  
       setIsMatchingWaiting(false);
       setIsMatchingStarted(true);
       setDummyUserCount(3);
@@ -227,6 +343,7 @@ function App() {
       {isMatchingStarted ? (
         <>
           <VideoChat myId={myId} roomId={roomId} />
+          <Untitled2></Untitled2>
           {renderDummyUsers()}
           {!isSessionStarted ? (
             <>

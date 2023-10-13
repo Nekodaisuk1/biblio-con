@@ -130,6 +130,21 @@ export const removeWaitingUser = async (userId) => {
   }
 };
 
+export const getDummyUsers = async () => {
+  try {
+    const dummyUsers = [];
+    const q = query(collection(db, 'matchingSettings'), where('isWaitingForMatching', '==', true));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      dummyUsers.push(doc.data());
+    });
+    return dummyUsers;
+  } catch (error) {
+    console.error("Error getting dummy users:", error);
+    return [];
+  }
+};
+
 export const getWaitingUsers = async () => {
   try {
     const users = [];
@@ -144,6 +159,8 @@ export const getWaitingUsers = async () => {
   }
 };
 
+
+
 export const dissolveRoom = async (roomId) => {
   try {
     const roomRef = doc(db, 'rooms', roomId);
@@ -153,4 +170,4 @@ export const dissolveRoom = async (roomId) => {
   }
 };
 
-export { auth };
+export { db, auth };
